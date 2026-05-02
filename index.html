@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pioneer Hybrid Growth Chart — SW Minnesota</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #f7f3ec;
+    --bg-card: #fdfbf6;
+    --bg-card-2: #f1ece2;
+    --ink: #1f1d18;
+    --ink-soft: #5b574d;
+    --ink-faint: #8b8576;
+    --rule: #ddd5c4;
+    --rule-soft: #ebe5d5;
+    --accent: #c4541a;          /* Pioneer-ish burnt orange */
+    --accent-deep: #8a3a12;
+    --emerge: #8aa64a;           /* sprout green-yellow */
+    --silk: #2f7a3a;             /* deep grass-green */
+    --bl: #b5651d;               /* tasseled-corn brown */
+    --harvest: #8c2b16;          /* dried-husk red */
+    --today: #1f1d18;
+    --forecast-band: rgba(196,84,26,0.08);
+    --shadow: 0 1px 0 rgba(0,0,0,0.04), 0 6px 20px -8px rgba(60,50,30,0.12);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    font-size: 14px;
+    line-height: 1.45;
+    min-height: 100vh;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  /* ======= Header ======= */
+  header.app {
+    border-bottom: 1px solid var(--rule);
+    background: var(--bg-card);
+    padding: 18px 28px 14px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  header.app .brand {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  header.app .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    color: var(--accent-deep);
+    text-transform: uppercase;
+  }
+  header.app h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  header.app .sub {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+  header.app .status {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-faint);
+    text-align: right;
+    line-height: 1.6;
+  }
+  header.app .status .dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ink-faint); margin-right: 6px; vertical-align: middle;
+  }
+  header.app .status .dot.live { background: #2f7a3a; }
+  header.app .status .dot.partial { background: #c4541a; }
+
+  /* ======= Tabs ======= */
+  nav.tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--rule);
+    background: var(--bg-card);
+    padding: 0 28px;
+  }
+  nav.tabs button {
+    appearance: none; background: none; border: none;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 12px 18px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color .15s, border-color .15s;
+  }
+  nav.tabs button:hover { color: var(--ink); }
+  nav.tabs button.active {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ======= Controls ======= */
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    padding: 16px 28px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--rule);
+  }
+  .ctrl label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 5px;
+  }
+  .ctrl select, .ctrl input[type=text] {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--bg-card-2);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    padding: 8px 10px;
+    border-radius: 3px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color .12s;
+  }
+  .ctrl select:focus, .ctrl input[type=text]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .ctrl select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%235b574d' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 26px;
+  }
+
+  /* Hybrid multiselect */
+  .ms {
+    position: relative;
+  }
+  .ms-button {
+    width: 100%;
+    text-align: left;
+    background: var(--bg-card-2);
+    border: 1px solid var(--rule);
+    padding: 8px 26px 8px 10px;
+    border-radius: 3px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--ink);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%235b574d' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+  .ms-button:focus { outline: none; border-color: var(--accent); }
+  .ms-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    box-shadow: var(--shadow);
+    z-index: 50;
+    max-height: 380px;
+    display: none;
+    flex-direction: column;
+  }
+  .ms-panel.open { display: flex; }
+  .ms-quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 8px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .ms-quick button {
+    appearance: none;
+    background: var(--bg-card-2);
+    border: 1px solid var(--rule);
+    color: var(--ink-soft);
+    font: inherit;
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 4px 8px;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  .ms-quick button:hover { background: var(--accent); color: white; border-color: var(--accent); }
+  .ms-search {
+    padding: 8px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .ms-search input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    padding: 6px 8px;
+    border-radius: 2px;
+    font: inherit;
+    font-size: 12px;
+  }
+  .ms-list {
+    overflow-y: auto;
+    flex: 1;
+    padding: 4px 0;
+  }
+  .ms-list label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    font-size: 12.5px;
+    cursor: pointer;
+    color: var(--ink);
+    font-family: inherit;
+    text-transform: none;
+    letter-spacing: normal;
+    margin: 0;
+  }
+  .ms-list label:hover { background: var(--bg-card-2); }
+  .ms-list label .rm {
+    color: var(--ink-faint);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    margin-left: auto;
+  }
+  .ms-list input[type=checkbox] {
+    accent-color: var(--accent);
+  }
+
+  /* Layer toggles & sort */
+  .layer-toggles {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .layer-toggles label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg-card-2);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    margin: 0;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--ink);
+    font-family: inherit;
+  }
+  .layer-toggles input[type=checkbox] { accent-color: var(--accent); }
+  .layer-toggles .swatch {
+    display: inline-block;
+    width: 14px; height: 8px;
+    border-radius: 2px;
+  }
+  .swatch.emerge { background: var(--emerge); }
+  .swatch.silk { background: var(--silk); }
+  .swatch.bl { background: var(--bl); }
+  .swatch.harvest { background: var(--harvest); }
+
+  /* ======= Main panels ======= */
+  main {
+    padding: 18px 28px 40px;
+  }
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ======= Legend bar above chart ======= */
+  .chart-legend {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--rule-soft);
+    background: var(--bg-card-2);
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    flex-wrap: wrap;
+  }
+  .chart-legend .item { display: inline-flex; align-items: center; gap: 6px; }
+  .chart-legend .pip { display:inline-block; width: 10px; height: 10px; border-radius: 50%; }
+  .chart-legend .line {
+    display:inline-block; width: 16px; height: 0; border-top: 2px dashed var(--ink); vertical-align: middle;
+  }
+  .chart-legend .band {
+    display:inline-block; width: 16px; height: 12px; background: var(--forecast-band);
+    border: 1px dashed rgba(196,84,26,0.45);
+    vertical-align: middle;
+  }
+
+  /* ======= SVG chart ======= */
+  #chart-wrap { padding: 6px 0 14px; overflow-x: auto; }
+  svg.chart { display: block; width: 100%; min-width: 760px; }
+  svg.chart text { font-family: 'IBM Plex Sans', sans-serif; fill: var(--ink); }
+  svg.chart .axis text { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; fill: var(--ink-soft); }
+  svg.chart .axis line { stroke: var(--rule); }
+  svg.chart .axis .month-tick { stroke: var(--rule); }
+  svg.chart .grid line { stroke: var(--rule-soft); stroke-dasharray: 2 3; }
+  svg.chart .row-label { font-size: 11.5px; font-family: 'IBM Plex Mono', monospace; fill: var(--ink); }
+  svg.chart .row-rm { font-size: 10px; font-family: 'IBM Plex Mono', monospace; fill: var(--ink-faint); }
+  svg.chart .today-line { stroke: var(--today); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  svg.chart .today-label, svg.chart .forecast-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    fill: var(--ink);
+  }
+  svg.chart .forecast-band { fill: var(--forecast-band); }
+  svg.chart .forecast-edge { stroke: rgba(196,84,26,0.45); stroke-dasharray: 2 3; stroke-width: 1; fill: none; }
+  svg.chart .bar-emerge { fill: var(--emerge); }
+  svg.chart .bar-silk { fill: var(--silk); }
+  svg.chart .bar-bl { fill: var(--bl); }
+  svg.chart .bar-harvest { fill: var(--harvest); }
+  svg.chart .marker { stroke: white; stroke-width: 1.2; }
+  svg.chart .row-bg:nth-child(even) { fill: var(--bg-card-2); }
+
+  /* ======= Calendar table ======= */
+  .table-wrap { overflow: auto; max-height: 70vh; border-top: 1px solid var(--rule-soft); }
+  table.dt { border-collapse: collapse; width: 100%; font-size: 12px; }
+  table.dt thead th {
+    position: sticky; top: 0;
+    background: var(--bg-card-2);
+    border-bottom: 1px solid var(--rule);
+    text-align: left;
+    padding: 8px 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    z-index: 2;
+  }
+  table.dt tbody td {
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--rule-soft);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--ink);
+  }
+  table.dt tbody td.label { font-family: 'IBM Plex Sans', sans-serif; }
+  table.dt tbody tr.milestone { background: rgba(196,84,26,0.07); }
+  table.dt tbody tr.milestone td { font-weight: 500; }
+  .src-pill {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    letter-spacing: 0.04em;
+    border: 1px solid;
+  }
+  .src-actual { color: #2f7a3a; border-color: #2f7a3a; background: rgba(47,122,58,0.08); }
+  .src-forecast { color: #c4541a; border-color: #c4541a; background: rgba(196,84,26,0.08); }
+  .src-avg { color: var(--ink-faint); border-color: var(--rule); background: var(--bg-card-2); }
+
+  .panel-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--rule-soft);
+    background: var(--bg-card-2);
+  }
+  .panel-head h2 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .panel-head .meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .btn {
+    appearance: none;
+    background: var(--accent);
+    color: white;
+    border: 1px solid var(--accent);
+    padding: 6px 12px;
+    border-radius: 3px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+  }
+  .btn:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  .btn.ghost { background: transparent; color: var(--ink); }
+  .btn.ghost:hover { background: var(--bg-card-2); color: var(--ink); }
+
+  /* Detail table */
+  table.detail { border-collapse: collapse; width: auto; min-width: 720px; max-width: 100%; font-size: 12px; margin: 0; }
+  table.detail thead th {
+    position: sticky; top: 0;
+    background: var(--bg-card-2);
+    border-bottom: 1px solid var(--rule);
+    text-align: left;
+    padding: 9px 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  table.detail thead th:hover { color: var(--ink); }
+  table.detail tbody td {
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--rule-soft);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  /* Right-align numeric columns */
+  table.detail th:nth-child(2),
+  table.detail th:nth-child(3),
+  table.detail th:nth-child(4),
+  table.detail th:nth-child(9),
+  table.detail td:nth-child(2),
+  table.detail td:nth-child(3),
+  table.detail td:nth-child(4),
+  table.detail td:nth-child(9) { text-align: right; }
+  table.detail tbody td.name { font-family: 'IBM Plex Sans', sans-serif; font-weight: 500; }
+  table.detail tbody td.silk-cell { color: white; }
+  table.detail tbody td.bl-cell { color: white; }
+  table.detail tbody td.harvest-cell { color: white; }
+
+  footer.app {
+    padding: 18px 28px 24px;
+    color: var(--ink-faint);
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.04em;
+    border-top: 1px solid var(--rule);
+    margin-top: 24px;
+    background: var(--bg-card);
+  }
+  footer.app a { color: var(--ink-soft); }
+
+  /* loading state */
+  .loading-overlay {
+    position: fixed; inset: 0;
+    background: rgba(247,243,236,0.7);
+    backdrop-filter: blur(2px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .loading-overlay.show { opacity: 1; }
+
+  @media (max-width: 720px) {
+    header.app, nav.tabs, .controls, main { padding-left: 14px; padding-right: 14px; }
+    header.app h1 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<header class="app">
+  <div class="brand">
+    <span class="eyebrow">Pioneer Hybrid Growth Chart · SW Minnesota</span>
+    <h1>Hybrid Maturity Projection</h1>
+    <div class="sub">Silk · Black Layer · Harvest @ 21% moisture · Base 50°F / Ceiling 86°F GDU</div>
+  </div>
+  <div class="status">
+    <div><span class="dot" id="status-dot"></span><span id="status-text">Initializing…</span></div>
+    <div id="status-detail" style="font-size:10.5px;color:var(--ink-faint);"></div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="active" data-tab="chart">Growth Chart</button>
+  <button data-tab="detail">Hybrid Detail</button>
+  <button data-tab="calendar">GDU Calendar</button>
+</nav>
+
+<section class="controls">
+  <div class="ctrl">
+    <label>Location</label>
+    <select id="loc-select"></select>
+  </div>
+  <div class="ctrl">
+    <label>Planting Date</label>
+    <select id="plant-select"></select>
+  </div>
+  <div class="ctrl">
+    <label>Hybrids</label>
+    <div class="ms" id="hybrid-ms">
+      <button class="ms-button" id="hybrid-btn">All hybrids (30)</button>
+      <div class="ms-panel" id="hybrid-panel">
+        <div class="ms-quick" id="hybrid-quick"></div>
+        <div class="ms-search"><input type="text" id="hybrid-search" placeholder="Search hybrid…"></div>
+        <div class="ms-list" id="hybrid-list"></div>
+      </div>
+    </div>
+  </div>
+  <div class="ctrl">
+    <label>Sort By</label>
+    <select id="sort-select">
+      <option value="rm">Relative Maturity</option>
+      <option value="silk">Silk Date</option>
+      <option value="harvest">Harvest Date</option>
+    </select>
+  </div>
+  <div class="ctrl" style="grid-column: span 2;">
+    <label>Layers</label>
+    <div class="layer-toggles">
+      <label><input type="checkbox" id="show-emerge" checked><span class="swatch emerge"></span>Emergence</label>
+      <label><input type="checkbox" id="show-silk" checked><span class="swatch silk"></span>Silk</label>
+      <label><input type="checkbox" id="show-bl" checked><span class="swatch bl"></span>Black Layer</label>
+      <label><input type="checkbox" id="show-harvest" checked><span class="swatch harvest"></span>Harvest 21%</label>
+    </div>
+  </div>
+</section>
+
+<main>
+  <!-- ===== Chart Tab ===== -->
+  <div class="tab-pane active" id="pane-chart">
+    <div class="panel">
+      <div class="chart-legend">
+        <span class="item"><span class="pip" style="background:var(--emerge);"></span>Emergence (VE)</span>
+        <span class="item"><span class="pip" style="background:var(--silk);"></span>Silk (R1)</span>
+        <span class="item"><span class="pip" style="background:var(--bl);"></span>Black Layer (R6)</span>
+        <span class="item"><span class="pip" style="background:var(--harvest);"></span>Harvest @ 21% moisture</span>
+        <span class="item" style="margin-left:auto;"><span class="line"></span>&nbsp;Today</span>
+        <span class="item"><span class="band"></span>&nbsp;10-day forecast window</span>
+      </div>
+      <div id="chart-wrap"><svg class="chart" id="chart"></svg></div>
+    </div>
+  </div>
+
+  <!-- ===== Detail Tab ===== -->
+  <div class="tab-pane" id="pane-detail">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Hybrid Detail</h2>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <span class="meta" id="detail-meta"></span>
+          <button class="btn" id="export-btn">Export to Excel</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="detail" id="detail-table">
+          <thead>
+            <tr>
+              <th data-sort="hybrid">Hybrid</th>
+              <th data-sort="rm">RM</th>
+              <th data-sort="gdu_silk">GDU → Silk</th>
+              <th data-sort="gdu_bl">GDU → BL</th>
+              <th data-sort="emerge_date">Emergence</th>
+              <th data-sort="silk_date">Silk Date</th>
+              <th data-sort="bl_date">BL Date</th>
+              <th data-sort="harvest_date">Harvest 21%</th>
+              <th data-sort="days_to_harvest">Days to Harvest</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Calendar Tab ===== -->
+  <div class="tab-pane" id="pane-calendar">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>GDU Calendar — April 1 to November 20</h2>
+        <span class="meta" id="cal-meta"></span>
+      </div>
+      <div class="table-wrap">
+        <table class="dt" id="cal-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>DOY</th>
+              <th>Daily GDU</th>
+              <th>Source</th>
+              <th>Cum from Planting</th>
+              <th>Cum from Jan 1</th>
+              <th>Milestones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="app">
+  Sources: 2020–2025 daily averages computed from MRCC station data · 2026 actuals from RCC-ACIS · 10-day forecast from Open-Meteo · GDU base 50°F / ceiling 86°F · 217.5 GDU from black layer to 21% moisture
+</footer>
+
+<div class="loading-overlay" id="loading">Fetching live weather…</div>
+
+<script>
+/* ========================================================================
+   PIONEER HYBRID GROWTH CHART — SW MINNESOTA
+   Single-file HTML application
+   ======================================================================== */
+
+/* ---------- 2020–2025 daily GDU averages (DOY 1..365) ----------
+   Computed from MRCC accumulated GDU CSV exports for each location,
+   using base 50°F / ceiling 86°F. Feb 29 dropped from leap years.
+*/
+const HISTORICAL_DAILY_GDU = {"Marshall":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,2.2,10.7,13.3,14.5,11.8,13.2,13.5,10.8,11.3,10.2,10.5,10.5,11.5,12.3,16.2,14.8,12.2,11.7,14.0,13.2,13.8,16.8,15.0,20.7,21.5,22.0,20.2,20.2,20.3,20.0,21.2,18.8,17.0,21.2,21.8,20.7,21.0,19.3,21.3,22.2,20.8,21.0,19.7,19.8,23.2,24.3,22.3,21.8,18.0,21.2,22.2,21.7,22.3,22.7,24.5,26.0,24.5,23.0,19.7,20.2,21.7,23.0,21.8,21.2,22.8,23.8,23.3,23.0,21.0,19.2,23.3,22.8,22.7,22.5,24.0,25.2,24.0,23.8,26.0,27.0,22.2,22.5,22.0,21.8,21.2,21.2,20.8,20.8,20.2,19.7,20.7,20.3,21.8,22.2,22.7,21.7,20.2,19.3,22.7,21.3,21.5,22.8,23.2,20.2,20.5,24.3,24.0,21.8,19.2,18.0,20.7,20.3,19.3,19.0,19.2,19.7,19.2,17.7,18.2,16.8,15.3,13.0,14.0,13.0,14.2,14.2,13.8,16.5,20.0,21.0,18.3,17.5,17.5,19.7,18.0,13.0,12.7,13.8,12.8,14.8,15.2,13.3,13.2,17.7,15.8,14.2,14.7,14.2,13.3,14.7,9.5,8.0,11.0,12.7,10.7,12.0,5.8,5.3,2.7,2.5,4.3,8.7,6.5,5.7,7.8,5.8,5.2,5.2,1.5,2.7,3.3,2.7,4.0,3.3,2.0,2.7,2.2,4.5,4.5,4.2,6.2,5.7,4.7,3.7,0.8,0.0,0.3,1.7,1.8,2.3,2.8,2.7,0.3,1.7,1.0,0.0,0.0,0.5,1.8,0.7,0.5,0.3,0.0,0.7,1.0,0.0,0.5,0.0,0.0,0.0,0.2,0.7,1.7,0.5,0.3,0.0,0.0,0.0,0.0,0.3,0.3,0.0,0.2,0.0,0.0,0.0,0.0,0.5,0.0,0.2,0.2,0.0,0.0,0.3,0.0,0.0],"Ivanhoe":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,2.2,10.7,12.0,13.7,10.8,12.2,13.5,11.0,9.8,9.0,10.5,10.3,10.2,11.2,15.0,13.5,11.7,11.3,13.2,13.3,13.0,15.0,14.0,18.5,20.3,20.3,19.2,19.3,19.2,20.0,20.0,18.3,16.3,19.2,21.2,20.3,19.7,19.5,21.2,21.8,20.3,21.0,18.8,19.0,21.7,23.2,21.8,20.5,16.8,19.2,21.3,20.8,21.0,22.0,23.7,25.5,23.2,22.3,19.7,18.8,20.7,21.8,22.0,20.3,22.2,23.3,22.5,22.7,20.5,17.8,20.8,21.7,21.2,21.7,23.8,24.3,23.2,23.0,25.2,26.2,22.3,21.5,22.2,21.5,20.0,20.7,20.0,20.3,20.0,18.8,19.8,18.7,20.8,21.2,20.5,21.3,18.2,18.3,21.5,21.8,20.8,22.3,22.8,19.3,20.0,23.0,23.5,21.8,18.5,18.0,19.3,19.8,18.3,18.0,18.8,18.8,18.5,16.3,17.0,16.2,14.7,12.5,13.0,12.3,14.7,12.8,13.2,16.0,19.8,20.2,17.5,16.8,17.2,19.2,16.5,12.2,12.3,13.2,12.3,14.0,14.8,13.8,13.2,15.8,16.0,14.0,14.3,13.2,12.3,13.7,8.7,7.8,10.8,12.2,10.2,11.0,6.0,5.0,2.2,2.3,3.7,8.5,5.5,5.3,7.3,5.5,5.0,5.2,1.3,2.5,2.8,2.7,3.7,3.3,2.0,2.3,2.2,4.2,4.3,3.8,5.8,5.3,4.0,3.2,0.7,0.2,0.2,1.3,1.7,2.2,3.0,2.7,0.3,1.5,1.0,0.0,0.0,0.3,1.7,0.5,0.5,0.3,0.0,0.5,0.8,0.0,0.7,0.0,0.0,0.0,0.2,0.7,1.3,0.3,0.3,0.0,0.0,0.0,0.0,0.2,0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.5,0.3,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Worthington":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,2.3,11.0,12.5,12.8,10.3,11.5,12.8,11.5,9.8,8.5,10.3,10.0,9.2,11.2,14.5,13.0,10.8,10.8,11.3,12.3,13.2,14.8,14.2,18.0,19.5,21.0,17.8,18.0,18.7,20.0,19.3,17.7,15.5,19.0,21.8,21.2,21.2,19.8,21.7,21.5,21.5,20.3,19.7,19.5,21.2,22.7,21.5,20.2,17.7,19.7,21.7,20.7,20.5,20.7,23.8,25.0,22.8,21.8,20.0,18.2,20.3,22.3,20.0,19.7,21.5,23.5,21.2,20.0,19.3,18.0,20.5,21.0,21.0,21.7,23.0,23.8,23.2,23.3,24.7,24.7,22.5,21.8,21.0,20.3,20.0,19.3,19.3,18.8,19.2,18.7,20.0,18.3,20.7,20.0,20.5,18.3,17.3,16.3,19.3,20.3,19.2,21.8,21.5,19.7,20.8,23.3,22.7,21.2,18.3,18.7,20.2,19.8,17.0,18.0,17.8,17.8,17.3,15.3,16.3,15.8,14.5,12.0,11.5,11.3,13.0,12.8,13.3,16.7,19.2,18.5,17.7,15.5,16.2,19.5,14.7,12.0,13.0,13.0,12.0,12.5,13.7,13.8,14.5,16.8,17.0,13.7,13.8,11.2,12.0,12.2,8.5,8.3,10.8,11.8,10.7,9.5,5.2,4.8,2.7,1.7,3.3,8.2,6.8,6.7,6.8,6.5,5.3,4.2,2.8,2.8,2.2,3.2,3.5,3.7,2.2,2.3,2.2,3.5,3.7,3.8,4.5,4.2,3.7,4.2,1.8,0.2,0.8,1.0,1.5,1.8,3.3,2.0,0.5,1.5,0.3,0.0,0.0,0.0,1.0,0.3,0.2,0.0,0.0,0.2,1.0,0.0,0.3,0.0,0.0,0.0,0.0,0.3,0.2,0.3,0.3,0.0,0.0,0.0,0.0,0.0,0.3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Truman":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,3.0,11.8,13.7,14.7,12.5,11.3,14.3,13.7,10.7,9.8,11.0,12.2,11.0,12.0,15.8,15.5,13.0,10.8,12.0,13.0,14.2,15.5,15.7,18.7,21.3,22.5,18.8,19.8,20.8,20.3,19.8,18.7,17.0,19.7,21.5,20.8,22.0,20.3,22.0,22.7,22.3,21.5,20.8,21.3,21.8,23.5,23.7,21.3,19.3,20.7,22.3,22.3,22.0,22.0,22.3,26.0,24.7,22.8,21.7,20.0,21.0,22.0,22.2,20.8,21.3,22.8,21.2,20.8,21.0,19.0,20.3,22.2,22.2,22.0,22.7,24.2,23.2,23.3,24.7,25.5,23.5,22.3,21.3,21.8,19.8,20.5,20.5,19.7,20.5,19.2,21.5,19.8,22.0,20.5,20.3,19.7,19.0,17.2,19.2,22.2,19.8,21.2,22.0,20.7,20.2,22.5,23.8,22.5,20.2,18.2,19.5,21.3,18.3,18.0,17.7,17.2,18.2,16.2,16.5,15.7,13.8,12.0,12.8,12.3,12.5,13.7,12.8,16.2,17.5,19.8,18.3,16.5,16.2,18.7,17.2,14.7,13.2,13.0,13.2,14.2,15.0,14.2,13.2,16.8,16.8,14.2,14.0,13.5,11.8,14.8,9.2,8.2,11.3,12.2,10.0,11.5,5.7,5.5,2.7,2.7,3.5,8.8,7.5,6.5,7.5,6.0,5.5,4.5,2.3,3.0,3.7,3.0,4.0,4.5,2.5,2.3,2.0,3.8,4.2,4.7,5.0,5.5,3.7,4.8,3.5,1.2,0.3,1.5,1.5,2.2,2.8,2.7,0.5,2.2,1.0,0.0,0.0,0.3,1.2,0.3,0.3,0.5,0.0,0.5,0.8,0.0,0.5,0.0,0.0,0.0,0.0,0.2,1.0,0.3,0.2,0.0,0.0,0.0,0.0,0.3,0.8,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.2,0.0,0.0,0.0,0.0,0.0,0.0],"Redwood Falls":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,2.7,10.7,13.0,14.7,11.7,12.2,13.3,11.8,9.7,9.3,10.2,11.3,10.7,11.7,14.5,14.3,12.3,11.0,11.8,13.7,13.8,16.0,15.0,18.5,20.8,21.2,19.2,19.8,20.5,19.5,19.7,18.2,17.0,19.2,20.8,19.7,20.0,18.8,20.3,21.5,20.5,20.2,20.2,20.0,22.2,23.0,23.0,21.0,18.2,20.2,21.7,21.3,22.0,21.8,22.5,25.2,24.2,22.0,19.3,19.8,20.2,21.5,22.0,20.8,22.2,22.3,21.5,21.2,20.7,18.3,20.8,22.2,21.7,21.3,23.0,23.8,22.8,23.0,24.8,25.0,22.7,22.0,20.5,21.7,20.2,20.7,19.8,19.7,20.5,18.8,20.5,19.2,20.8,20.3,20.3,19.7,17.8,17.2,19.7,21.5,20.3,21.2,22.0,19.8,19.8,22.5,23.3,22.0,19.5,17.7,19.0,20.3,17.7,18.2,17.8,18.8,18.2,15.3,16.2,14.3,13.5,11.7,12.5,11.8,13.0,13.2,13.2,15.5,18.5,20.2,18.2,16.5,15.7,19.2,16.5,13.2,13.2,12.8,12.0,13.3,14.5,13.5,12.7,14.2,16.5,13.8,14.2,13.2,12.5,13.8,9.2,7.8,10.7,11.5,10.2,11.2,6.0,4.7,2.5,2.3,3.8,8.7,6.5,5.7,7.0,5.7,5.3,4.3,2.2,2.7,3.2,2.5,4.2,4.2,2.3,2.0,2.0,4.0,4.8,4.5,5.0,5.3,3.8,3.7,1.8,0.2,0.2,1.2,1.5,2.3,2.7,2.0,0.3,1.2,1.0,0.0,0.0,0.3,1.2,0.5,0.3,0.2,0.0,0.7,0.8,0.0,0.3,0.0,0.0,0.0,0.0,0.3,1.2,0.0,0.0,0.0,0.0,0.0,0.0,0.3,0.3,0.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.2,0.0,0.0,0.0,0.0,0.0,0.0]};
+
+/* ---------- Locations (lat/lon for forecast + ACIS station ids) ---------- */
+const LOCATIONS = [
+  { name: "Marshall",      lat: 44.449, lon: -95.796, sids: ["218692 9","MMSM5","KMML"] },
+  { name: "Ivanhoe",       lat: 44.464, lon: -96.245, sids: ["214176 9","KMVE","MVEM5"] },
+  { name: "Worthington",   lat: 43.629, lon: -95.582, sids: ["KOTG","219046 9","218692 9"] },
+  { name: "Truman",        lat: 43.828, lon: -94.434, sids: ["218419 9","KFRM","KAEL"] },
+  { name: "Redwood Falls", lat: 44.547, lon: -95.082, sids: ["217294 9","KRWF"] },
+];
+
+/* ---------- 30 Pioneer hybrids (per Platform Scores spreadsheet) ---------- */
+const HYBRIDS = [
+  { name: "P92399",  rm: 92,  gdu_silk: 1150, gdu_bl: 2190 },
+  { name: "P9492",   rm: 94,  gdu_silk: 1210, gdu_bl: 2350 },
+  { name: "P96567",  rm: 96,  gdu_silk: 1250, gdu_bl: 2350 },
+  { name: "P96760",  rm: 96,  gdu_silk: 1200, gdu_bl: 2350 },
+  { name: "P97037",  rm: 97,  gdu_silk: 1190, gdu_bl: 2400 },
+  { name: "P97299",  rm: 97,  gdu_silk: 1180, gdu_bl: 2350 },
+  { name: "P98125",  rm: 98,  gdu_silk: 1200, gdu_bl: 2450 },
+  { name: "P9955",   rm: 99,  gdu_silk: 1240, gdu_bl: 2400 },
+  { name: "P00549",  rm: 100, gdu_silk: 1200, gdu_bl: 2420 },
+  { name: "P01851",  rm: 101, gdu_silk: 1280, gdu_bl: 2470 },
+  { name: "P02405",  rm: 102, gdu_silk: 1250, gdu_bl: 2470 },
+  { name: "P03115",  rm: 103, gdu_silk: 1270, gdu_bl: 2450 },
+  { name: "P0339",   rm: 103, gdu_silk: 1260, gdu_bl: 2420 },
+  { name: "P03951",  rm: 103, gdu_silk: 1250, gdu_bl: 2530 },
+  { name: "P0404",   rm: 104, gdu_silk: 1250, gdu_bl: 2450 },
+  { name: "P05081",  rm: 105, gdu_silk: 1320, gdu_bl: 2580 },
+  { name: "P0529",   rm: 105, gdu_silk: 1340, gdu_bl: 2550 },
+  { name: "P05466",  rm: 105, gdu_silk: 1270, gdu_bl: 2500 },
+  { name: "P05737",  rm: 105, gdu_silk: 1270, gdu_bl: 2580 },
+  { name: "P0622",   rm: 106, gdu_silk: 1270, gdu_bl: 2550 },
+  { name: "P07147",  rm: 107, gdu_silk: 1330, gdu_bl: 2680 },
+  { name: "P08527",  rm: 108, gdu_silk: 1380, gdu_bl: 2580 },
+  { name: "P0859",   rm: 108, gdu_silk: 1380, gdu_bl: 2680 },
+  { name: "P0953",   rm: 109, gdu_silk: 1380, gdu_bl: 2730 },
+  { name: "P1027",   rm: 110, gdu_silk: 1360, gdu_bl: 2760 },
+  { name: "P10300",  rm: 110, gdu_silk: 1310, gdu_bl: 2630 },
+  { name: "P1185",   rm: 111, gdu_silk: 1370, gdu_bl: 2730 },
+  { name: "P12517",  rm: 112, gdu_silk: 1430, gdu_bl: 2600 },
+  { name: "P13777",  rm: 113, gdu_silk: 1390, gdu_bl: 2690 },
+  { name: "P14830",  rm: 114, gdu_silk: 1390, gdu_bl: 2700 },
+];
+
+/* ---------- Constants ---------- */
+const EMERGENCE_GDU = 120;
+const HARVEST_GDU_AFTER_BL = 217.5;
+const YEAR = 2026;
+const TODAY = new Date();
+const TODAY_DOY = doyFromDate(TODAY);
+
+/* ---------- DOY / date helpers (non-leap-year DOY 1..365) ---------- */
+function isLeap(y) { return (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)); }
+function doyFromDate(d) {
+  const y = d.getFullYear();
+  const start = new Date(y, 0, 1);
+  // ms diff -> day index (0-based) -> +1
+  const diff = Math.floor((d - start) / 86400000) + 1;
+  // collapse leap day onto Mar 1 so DOY stays 1..365
+  if (isLeap(y) && diff > 60) return diff - 1;
+  return Math.min(365, Math.max(1, diff));
+}
+function dateFromDoy(year, doy) {
+  // doy is 1..365 in our non-leap convention
+  let d = new Date(year, 0, 1);
+  let bump = doy - 1;
+  if (isLeap(year) && doy >= 60) bump += 1;  // skip Feb 29 to keep alignment
+  d.setDate(d.getDate() + bump);
+  return d;
+}
+function fmtDate(d, opts) {
+  if (!d) return "—";
+  return d.toLocaleDateString("en-US", opts || { month: "short", day: "numeric" });
+}
+function fmtDateLong(d) {
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+function isoDate(d) {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dd = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
+function dateFromIso(iso) {
+  const [y,m,d] = iso.split("-").map(Number);
+  return new Date(y, m-1, d);
+}
+
+/* ---------- GDU formula: base 50, ceiling 86 ---------- */
+function dailyGdu(tmaxF, tminF) {
+  if (tmaxF == null || tminF == null || isNaN(tmaxF) || isNaN(tminF)) return null;
+  const hi = Math.min(tmaxF, 86);
+  const lo = Math.max(tminF, 50);
+  const avg = (hi + lo) / 2;
+  return Math.max(0, avg - 50);
+}
+function cToF(c) { return c == null ? null : c * 9 / 5 + 32; }
+
+/* ========================================================================
+   Application state
+   ======================================================================== */
+const state = {
+  location: "Marshall",
+  plantDate: "2026-05-01",
+  selectedHybrids: new Set(HYBRIDS.map(h => h.name)),
+  showEmerge: true, showSilk: true, showBl: true, showHarvest: true,
+  sortBy: "rm",
+  // Per-location daily GDU series for 2026: array length 365 of { gdu, src }
+  // src ∈ "actual" | "forecast" | "avg"
+  series: {},   // location -> array
+  forecastEndDoy: null,  // last doy that is forecast (for shading)
+  actualEndDoy: null,    // last doy that is actual
+  detailSort: { col: "rm", dir: "asc" },
+};
+
+/* Build initial series from baseline (avg only) for every location */
+function buildInitialSeries() {
+  for (const loc of LOCATIONS) {
+    const base = HISTORICAL_DAILY_GDU[loc.name] || [];
+    state.series[loc.name] = base.map(g => ({ gdu: g, src: "avg" }));
+  }
+}
+buildInitialSeries();
+
+/* ========================================================================
+   Live data fetching
+   ======================================================================== */
+
+async function fetchAcisActuals(loc) {
+  /* Fetch daily maxt/mint from RCC-ACIS for Jan 1 → today.
+     We try each candidate sid until one returns data for today's window.
+     Returns map { doy -> { tmax, tmin } } in degrees F.
+  */
+  const today = new Date();
+  const sdate = `${YEAR}-01-01`;
+  const edate = isoDate(today);
+
+  for (const sid of loc.sids) {
+    try {
+      const body = {
+        sid,
+        sdate, edate,
+        elems: [
+          { name: "maxt", units: "degreeF" },
+          { name: "mint", units: "degreeF" },
+        ],
+      };
+      const resp = await fetch("https://data.rcc-acis.org/StnData", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      if (!data || !data.data) continue;
+      // data.data is array of [date, maxt, mint]
+      const out = {};
+      let validCount = 0;
+      for (const row of data.data) {
+        const [iso, mx, mn] = row;
+        const tmax = parseFloat(mx);
+        const tmin = parseFloat(mn);
+        if (!iso || isNaN(tmax) || isNaN(tmin)) continue;
+        // ACIS uses M for missing — parseFloat returns NaN, skip
+        const d = dateFromIso(iso);
+        const doy = doyFromDate(d);
+        out[doy] = { tmax, tmin };
+        validCount += 1;
+      }
+      if (validCount >= 30) {
+        return { sidUsed: sid, data: out };
+      }
+    } catch (e) {
+      // try next sid
+    }
+  }
+  return null;
+}
+
+async function fetchOpenMeteoForecast(loc) {
+  /* Fetch 10 days of daily maxt/mint from Open-Meteo.
+     We do NOT pass temperature_unit — returns Celsius — and convert manually.
+     Returns map { doy -> { tmax, tmin } } in degrees F.
+  */
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}` +
+              `&daily=temperature_2m_max,temperature_2m_min&timezone=America%2FChicago&forecast_days=10`;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (!data || !data.daily) return null;
+    const dates = data.daily.time;
+    const maxC = data.daily.temperature_2m_max;
+    const minC = data.daily.temperature_2m_min;
+    const out = {};
+    for (let i = 0; i < dates.length; i++) {
+      const d = dateFromIso(dates[i]);
+      const doy = doyFromDate(d);
+      const tmax = cToF(maxC[i]);
+      const tmin = cToF(minC[i]);
+      if (tmax == null || tmin == null) continue;
+      out[doy] = { tmax, tmin };
+    }
+    return out;
+  } catch (e) {
+    return null;
+  }
+}
+
+/* Stitch live data (actuals + forecast) into 365-day series for one location */
+function stitchSeries(loc, actualMap, forecastMap) {
+  const baseline = HISTORICAL_DAILY_GDU[loc.name] || [];
+  const series = baseline.map(g => ({ gdu: g, src: "avg" }));
+  let actualEnd = 0;
+  let forecastEnd = 0;
+
+  if (actualMap) {
+    const sortedDoys = Object.keys(actualMap).map(Number).sort((a,b)=>a-b);
+    for (const doy of sortedDoys) {
+      const { tmax, tmin } = actualMap[doy];
+      const g = dailyGdu(tmax, tmin);
+      if (g == null) continue;
+      const idx = doy - 1;
+      if (idx < 0 || idx >= 365) continue;
+      series[idx] = { gdu: g, src: "actual" };
+      if (doy > actualEnd) actualEnd = doy;
+    }
+  }
+  if (forecastMap) {
+    const sortedDoys = Object.keys(forecastMap).map(Number).sort((a,b)=>a-b);
+    for (const doy of sortedDoys) {
+      const { tmax, tmin } = forecastMap[doy];
+      const g = dailyGdu(tmax, tmin);
+      if (g == null) continue;
+      const idx = doy - 1;
+      if (idx < 0 || idx >= 365) continue;
+      // forecast only fills days NOT already covered by actuals
+      if (series[idx].src !== "actual") {
+        series[idx] = { gdu: g, src: "forecast" };
+        if (doy > forecastEnd) forecastEnd = doy;
+      }
+    }
+  }
+  return { series, actualEnd, forecastEnd };
+}
+
+async function refreshLiveData() {
+  setStatus("loading", "Fetching 2026 actuals & forecast…");
+  let okActual = 0, okForecast = 0;
+  let lastActualEnd = 0, lastForecastEnd = 0;
+  for (const loc of LOCATIONS) {
+    const [actualResult, forecastResult] = await Promise.all([
+      fetchAcisActuals(loc),
+      fetchOpenMeteoForecast(loc),
+    ]);
+    const actualMap = actualResult ? actualResult.data : null;
+    const { series, actualEnd, forecastEnd } = stitchSeries(loc, actualMap, forecastResult);
+    state.series[loc.name] = series;
+    if (actualMap) okActual += 1;
+    if (forecastResult) okForecast += 1;
+    if (actualEnd > lastActualEnd) lastActualEnd = actualEnd;
+    if (forecastEnd > lastForecastEnd) lastForecastEnd = forecastEnd;
+  }
+  state.actualEndDoy = lastActualEnd || null;
+  state.forecastEndDoy = lastForecastEnd || null;
+
+  if (okActual === LOCATIONS.length && okForecast === LOCATIONS.length) {
+    setStatus("live", `Live: ${okActual}/${LOCATIONS.length} actuals · ${okForecast}/${LOCATIONS.length} forecast`);
+  } else if (okActual > 0 || okForecast > 0) {
+    setStatus("partial", `Partial live: ${okActual} actuals · ${okForecast} forecast (others on 2020–25 avg)`);
+  } else {
+    setStatus("offline", "Live fetch failed — using 2020–25 historical average");
+  }
+  render();
+}
+
+function setStatus(kind, text) {
+  const dot = document.getElementById("status-dot");
+  const t = document.getElementById("status-text");
+  const detail = document.getElementById("status-detail");
+  dot.className = "dot";
+  if (kind === "live") dot.classList.add("live");
+  else if (kind === "partial") dot.classList.add("partial");
+  t.textContent = text;
+  if (state.actualEndDoy) {
+    const d = dateFromDoy(YEAR, state.actualEndDoy);
+    detail.textContent = `Actuals through ${fmtDate(d)} · forecast through ${state.forecastEndDoy ? fmtDate(dateFromDoy(YEAR, state.forecastEndDoy)) : "—"}`;
+  } else {
+    detail.textContent = "";
+  }
+}
+
+/* ========================================================================
+   Hybrid milestone calculation
+   ======================================================================== */
+function computeMilestones(locName, plantIso) {
+  const series = state.series[locName] || [];
+  const plantDate = dateFromIso(plantIso);
+  const plantDoy = doyFromDate(plantDate);
+
+  // Daily cumulative from planting: index = doy in 1..365
+  // We start accumulating ON the planting day (inclusive).
+  const cumFromPlant = new Array(366).fill(0); // index 0 unused
+  let running = 0;
+  for (let doy = plantDoy; doy <= 365; doy++) {
+    running += (series[doy - 1] && series[doy - 1].gdu) || 0;
+    cumFromPlant[doy] = running;
+  }
+
+  function dayWhen(target) {
+    if (target == null) return null;
+    for (let doy = plantDoy; doy <= 365; doy++) {
+      if (cumFromPlant[doy] >= target) return doy;
+    }
+    return null;
+  }
+
+  const out = HYBRIDS.map(h => {
+    const emergeDoy = dayWhen(EMERGENCE_GDU);
+    const silkDoy = dayWhen(h.gdu_silk);
+    const blDoy = dayWhen(h.gdu_bl);
+    const harvestDoy = dayWhen(h.gdu_bl + HARVEST_GDU_AFTER_BL);
+    return {
+      ...h,
+      emergeDoy, silkDoy, blDoy, harvestDoy,
+      emergeDate: emergeDoy ? dateFromDoy(YEAR, emergeDoy) : null,
+      silkDate: silkDoy ? dateFromDoy(YEAR, silkDoy) : null,
+      blDate: blDoy ? dateFromDoy(YEAR, blDoy) : null,
+      harvestDate: harvestDoy ? dateFromDoy(YEAR, harvestDoy) : null,
+      cumFromPlant,  // shared reference (small concern, but fine)
+      plantDoy,
+    };
+  });
+  return out;
+}
+
+/* ========================================================================
+   UI: Controls
+   ======================================================================== */
+
+function buildLocationSelect() {
+  const sel = document.getElementById("loc-select");
+  sel.innerHTML = LOCATIONS.map(l => `<option value="${l.name}">${l.name}, MN</option>`).join("");
+  sel.value = state.location;
+  sel.addEventListener("change", () => { state.location = sel.value; render(); });
+}
+
+function buildPlantingSelect() {
+  const sel = document.getElementById("plant-select");
+  const opts = [];
+  // April 1 → June 15
+  const start = new Date(YEAR, 3, 1);
+  const end = new Date(YEAR, 5, 15);
+  let cur = new Date(start);
+  while (cur <= end) {
+    const iso = isoDate(cur);
+    const lbl = cur.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+    opts.push(`<option value="${iso}">${lbl}</option>`);
+    cur.setDate(cur.getDate() + 1);
+  }
+  sel.innerHTML = opts.join("");
+  sel.value = state.plantDate;
+  sel.addEventListener("change", () => { state.plantDate = sel.value; render(); });
+}
+
+function buildHybridMultiselect() {
+  const list = document.getElementById("hybrid-list");
+  const quick = document.getElementById("hybrid-quick");
+  const btn = document.getElementById("hybrid-btn");
+  const panel = document.getElementById("hybrid-panel");
+  const search = document.getElementById("hybrid-search");
+
+  function row(h) {
+    return `<label data-name="${h.name}" data-rm="${h.rm}">
+      <input type="checkbox" value="${h.name}" ${state.selectedHybrids.has(h.name)?"checked":""}>
+      <span>${h.name}</span>
+      <span class="rm">${h.rm}RM</span>
+    </label>`;
+  }
+  list.innerHTML = HYBRIDS.map(row).join("");
+
+  // quick buttons: All / None + RM ranges
+  const ranges = [
+    { lbl: "All", fn: () => HYBRIDS.map(h => h.name) },
+    { lbl: "None", fn: () => [] },
+    { lbl: "92–99", fn: () => HYBRIDS.filter(h => h.rm <= 99).map(h => h.name) },
+    { lbl: "100–105", fn: () => HYBRIDS.filter(h => h.rm >= 100 && h.rm <= 105).map(h => h.name) },
+    { lbl: "106–110", fn: () => HYBRIDS.filter(h => h.rm >= 106 && h.rm <= 110).map(h => h.name) },
+    { lbl: "111+", fn: () => HYBRIDS.filter(h => h.rm >= 111).map(h => h.name) },
+  ];
+  quick.innerHTML = ranges.map((r, i) => `<button data-i="${i}">${r.lbl}</button>`).join("");
+  quick.querySelectorAll("button").forEach((b, i) => {
+    b.addEventListener("click", () => {
+      const names = ranges[i].fn();
+      state.selectedHybrids = new Set(names);
+      list.querySelectorAll("input[type=checkbox]").forEach(cb => {
+        cb.checked = state.selectedHybrids.has(cb.value);
+      });
+      updateHybridButton();
+      render();
+    });
+  });
+
+  list.addEventListener("change", (e) => {
+    if (e.target.matches("input[type=checkbox]")) {
+      if (e.target.checked) state.selectedHybrids.add(e.target.value);
+      else state.selectedHybrids.delete(e.target.value);
+      updateHybridButton();
+      render();
+    }
+  });
+
+  search.addEventListener("input", () => {
+    const q = search.value.trim().toLowerCase();
+    list.querySelectorAll("label").forEach(lab => {
+      const n = lab.dataset.name.toLowerCase();
+      const rm = lab.dataset.rm;
+      lab.style.display = (!q || n.includes(q) || rm.includes(q)) ? "flex" : "none";
+    });
+  });
+
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    panel.classList.toggle("open");
+  });
+  document.addEventListener("click", (e) => {
+    if (!panel.contains(e.target) && e.target !== btn) panel.classList.remove("open");
+  });
+
+  updateHybridButton();
+}
+
+function updateHybridButton() {
+  const btn = document.getElementById("hybrid-btn");
+  const n = state.selectedHybrids.size;
+  if (n === HYBRIDS.length) btn.textContent = `All hybrids (${HYBRIDS.length})`;
+  else if (n === 0) btn.textContent = "No hybrids selected";
+  else if (n === 1) btn.textContent = `${[...state.selectedHybrids][0]}`;
+  else btn.textContent = `${n} hybrids selected`;
+}
+
+function bindToggles() {
+  document.getElementById("show-emerge").addEventListener("change", e => { state.showEmerge = e.target.checked; render(); });
+  document.getElementById("show-silk").addEventListener("change", e => { state.showSilk = e.target.checked; render(); });
+  document.getElementById("show-bl").addEventListener("change", e => { state.showBl = e.target.checked; render(); });
+  document.getElementById("show-harvest").addEventListener("change", e => { state.showHarvest = e.target.checked; render(); });
+  document.getElementById("sort-select").addEventListener("change", e => { state.sortBy = e.target.value; render(); });
+
+  document.querySelectorAll("nav.tabs button").forEach(b => {
+    b.addEventListener("click", () => {
+      document.querySelectorAll("nav.tabs button").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      document.querySelectorAll(".tab-pane").forEach(x => x.classList.remove("active"));
+      document.getElementById("pane-" + b.dataset.tab).classList.add("active");
+      render();  // sizing for SVG when tab becomes visible
+    });
+  });
+
+  document.getElementById("export-btn").addEventListener("click", exportToExcel);
+
+  document.querySelectorAll("#detail-table thead th").forEach(th => {
+    th.addEventListener("click", () => {
+      const col = th.dataset.sort;
+      if (state.detailSort.col === col) state.detailSort.dir = state.detailSort.dir === "asc" ? "desc" : "asc";
+      else { state.detailSort.col = col; state.detailSort.dir = "asc"; }
+      renderDetail();
+    });
+  });
+}
+
+/* ========================================================================
+   Render: Chart
+   ======================================================================== */
+
+function getActiveHybrids() {
+  const m = computeMilestones(state.location, state.plantDate);
+  return m.filter(h => state.selectedHybrids.has(h.name));
+}
+
+function sortHybrids(arr) {
+  const dir = 1;
+  const key = state.sortBy;
+  const arr2 = arr.slice();
+  arr2.sort((a, b) => {
+    if (key === "rm") {
+      if (a.rm !== b.rm) return (a.rm - b.rm) * dir;
+      return a.name.localeCompare(b.name);
+    }
+    if (key === "silk") {
+      const av = a.silkDoy || 999, bv = b.silkDoy || 999;
+      if (av !== bv) return (av - bv) * dir;
+      return a.rm - b.rm;
+    }
+    if (key === "harvest") {
+      const av = a.harvestDoy || 999, bv = b.harvestDoy || 999;
+      if (av !== bv) return (av - bv) * dir;
+      return a.rm - b.rm;
+    }
+    return 0;
+  });
+  return arr2;
+}
+
+function renderChart() {
+  const svg = document.getElementById("chart");
+  const wrap = document.getElementById("chart-wrap");
+  if (!svg) return;
+
+  const hybrids = sortHybrids(getActiveHybrids());
+
+  // Determine x-domain: planting date → max(harvest date, end of Nov) + a little buffer
+  const plantDate = dateFromIso(state.plantDate);
+  const plantDoy = doyFromDate(plantDate);
+  let maxDoy = 325; // ~ Nov 21 fallback
+  for (const h of hybrids) {
+    if (h.harvestDoy && h.harvestDoy > maxDoy) maxDoy = h.harvestDoy;
+  }
+  // Add a small right padding
+  maxDoy = Math.min(365, maxDoy + 5);
+  const minDoy = Math.max(60, plantDoy - 3); // a few days before planting
+
+  // Layout
+  const wrapW = wrap.clientWidth || 1000;
+  const W = Math.max(820, wrapW);
+  const labelW = 110;
+  const padL = 18, padR = 22;
+
+  // We'll need to determine padTop based on how many label lanes we need.
+  // Pre-compute callout positions assuming a provisional chart width to figure out collisions.
+  // For collision detection we only need relative x distances, which scale linearly with chartW.
+  // Provisional layout to measure callout overlap:
+  const provChartW = W - padL - labelW - padR;
+  function provX(doy) { return padL + labelW + ((doy - minDoy) / (maxDoy - minDoy)) * provChartW; }
+
+  // Forecast band info (rendered inline with the band, NOT in the callout lane stack)
+  let fStart = null, fEnd = null;
+  if (state.actualEndDoy && state.forecastEndDoy && state.forecastEndDoy > state.actualEndDoy) {
+    fStart = state.actualEndDoy + 1;
+    fEnd = state.forecastEndDoy;
+  } else if (TODAY.getFullYear() === YEAR) {
+    fStart = TODAY_DOY;
+    fEnd = Math.min(365, TODAY_DOY + 9);
+  }
+  const forecastVisible = !!(fStart && fEnd && fEnd >= minDoy && fStart <= maxDoy);
+
+  // Top callouts: TODAY and PLANT only. Merge them into one when same day.
+  const calloutSpecs = [];
+  const todayVisible = (TODAY.getFullYear() === YEAR && TODAY_DOY >= minDoy && TODAY_DOY <= maxDoy);
+  const plantVisible = (plantDoy >= minDoy && plantDoy <= maxDoy);
+  const samePlantToday = todayVisible && plantVisible && (plantDoy === TODAY_DOY);
+
+  if (samePlantToday) {
+    calloutSpecs.push({
+      x: provX(plantDoy), kind: "plant-today",
+      lines: ["PLANT · TODAY", fmtDate(plantDate).toUpperCase()],
+      color: "var(--ink)",
+    });
+  } else {
+    if (plantVisible) {
+      calloutSpecs.push({ x: provX(plantDoy), kind: "plant",
+        lines: ["PLANT", fmtDate(plantDate).toUpperCase()],
+        color: "var(--ink-soft)" });
+    }
+    if (todayVisible) {
+      calloutSpecs.push({ x: provX(TODAY_DOY), kind: "today",
+        lines: ["TODAY", fmtDate(TODAY).toUpperCase()],
+        color: "var(--ink)" });
+    }
+  }
+
+  // Lane assignment for any leftover collisions (e.g. plant Apr 28 vs today May 1)
+  calloutSpecs.sort((a, b) => a.x - b.x);
+  const COLLISION_PX = 96;
+  let maxLane = 0;
+  calloutSpecs.forEach((c, i) => {
+    let lane = 0;
+    for (let j = 0; j < i; j++) {
+      const other = calloutSpecs[j];
+      if (Math.abs(c.x - other.x) < COLLISION_PX && other.lane >= lane) lane = other.lane + 1;
+    }
+    c.lane = lane;
+    if (lane > maxLane) maxLane = lane;
+  });
+
+  // padTop = top breathing room + lanes × laneH + below-label gap
+  const laneH = 28;
+  const padTop = 12 + (maxLane + 1) * laneH + 8;
+  const padBot = 36;
+
+  // Target row heights
+  const nH = Math.max(hybrids.length, 1);
+  const rowH = nH >= 26 ? 24 : nH >= 18 ? 28 : nH >= 10 ? 32 : 36;
+  const innerH = rowH * nH;
+  const H = padTop + innerH + padBot;
+  const chartL = padL + labelW;
+  const chartR = W - padR;
+  const chartW = chartR - chartL;
+  const compactLabel = rowH < 26;  // single-line label when very tight
+
+  function xOfDoy(doy) {
+    return chartL + ((doy - minDoy) / (maxDoy - minDoy)) * chartW;
+  }
+  function dateForDoy(doy) { return dateFromDoy(YEAR, doy); }
+
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("height", H);
+
+  const parts = [];
+
+  // ---- Top callout labels (forecast band, plant, today) ----
+  // calloutSpecs / maxLane already computed above using a provisional X scale.
+  // Now render with the real xOfDoy.
+
+  // Forecast band rectangle
+  if (forecastVisible) {
+    const xs = xOfDoy(Math.max(fStart, minDoy));
+    const xe = xOfDoy(Math.min(fEnd, maxDoy));
+    parts.push(
+      `<rect class="forecast-band" x="${xs}" y="${padTop}" width="${xe-xs}" height="${innerH}" />`,
+      `<line class="forecast-edge" x1="${xs}" y1="${padTop}" x2="${xs}" y2="${padTop+innerH}" />`,
+      `<line class="forecast-edge" x1="${xe}" y1="${padTop}" x2="${xe}" y2="${padTop+innerH}" />`
+    );
+    // Inline caption hugging the top of the band.
+    // If the band is wide enough, anchor inside (right-edge); otherwise float to the right.
+    const bandLabel = `10-day forecast · ${fmtDate(dateFromDoy(YEAR, fStart))}–${fmtDate(dateFromDoy(YEAR, fEnd))}`;
+    const labelEstW = bandLabel.length * 5.4; // ~5.4px per char at 10px Plex Mono
+    let captionX, captionAnchor;
+    if ((xe - xs) >= labelEstW + 8) {
+      // Fits inside band: right-anchor at band's right edge
+      captionX = xe - 3;
+      captionAnchor = "end";
+    } else if ((chartR - xe) >= labelEstW + 8) {
+      // Doesn't fit inside, but fits to the right of band
+      captionX = xe + 4;
+      captionAnchor = "start";
+    } else {
+      // Fall back: left-anchor to chartL so it never hangs in the gutter
+      captionX = chartL;
+      captionAnchor = "start";
+    }
+    parts.push(
+      `<text class="forecast-label" x="${captionX}" y="${padTop-4}" text-anchor="${captionAnchor}" fill="var(--accent-deep)" opacity="0.85">${bandLabel}</text>`
+    );
+  }
+
+  // Today + Plant vertical lines
+  for (const c of calloutSpecs) {
+    if (c.kind === "today") {
+      const xt = xOfDoy(TODAY_DOY);
+      parts.push(`<line class="today-line" x1="${xt}" y1="${padTop-14}" x2="${xt}" y2="${padTop+innerH}" />`);
+    } else if (c.kind === "plant") {
+      const xp = xOfDoy(plantDoy);
+      parts.push(`<line x1="${xp}" y1="${padTop-14}" x2="${xp}" y2="${padTop+innerH}" stroke="var(--ink-faint)" stroke-dasharray="1 3" />`);
+    } else if (c.kind === "plant-today") {
+      const xp = xOfDoy(plantDoy);
+      // Use the solid TODAY style (it implies plant happens today)
+      parts.push(`<line class="today-line" x1="${xp}" y1="${padTop-14}" x2="${xp}" y2="${padTop+innerH}" />`);
+    }
+  }
+
+  // Render callout labels with their assigned lanes
+  for (const c of calloutSpecs) {
+    const cx = (c.kind === "today") ? xOfDoy(TODAY_DOY) : xOfDoy(plantDoy);
+    const baseY = 14 + c.lane * laneH;
+    const cls = (c.kind === "today" || c.kind === "plant-today") ? "today-label" : "axis";
+    parts.push(
+      `<text class="${cls}" x="${cx}" y="${baseY}" text-anchor="middle" fill="${c.color}">${c.lines[0]}</text>`,
+      `<text class="${cls}" x="${cx}" y="${baseY+12}" text-anchor="middle" fill="${c.color}" opacity="0.7">${c.lines[1]}</text>`
+    );
+  }
+
+  // Month gridlines + labels
+  const months = [];
+  let cm = new Date(plantDate.getFullYear(), 0, 1);
+  while (doyFromDate(cm) <= maxDoy + 1) {
+    const md = doyFromDate(cm);
+    if (md >= minDoy && md <= maxDoy) months.push({ doy: md, date: new Date(cm) });
+    cm.setMonth(cm.getMonth() + 1);
+    if (cm.getFullYear() > YEAR + 1) break;
+  }
+  for (const m of months) {
+    const x = xOfDoy(m.doy);
+    parts.push(
+      `<line class="grid-month" x1="${x}" y1="${padTop}" x2="${x}" y2="${padTop+innerH}" stroke="var(--rule-soft)" stroke-dasharray="2 3" />`,
+      `<text class="axis" x="${x}" y="${padTop+innerH+18}" text-anchor="middle">${m.date.toLocaleDateString("en-US",{month:"short"})}</text>`
+    );
+  }
+  // Day-15 ticks (lighter)
+  let cd = new Date(plantDate.getFullYear(), 0, 15);
+  while (doyFromDate(cd) <= maxDoy + 1) {
+    const md = doyFromDate(cd);
+    if (md >= minDoy && md <= maxDoy) {
+      const x = xOfDoy(md);
+      parts.push(`<line x1="${x}" y1="${padTop+innerH}" x2="${x}" y2="${padTop+innerH+4}" stroke="var(--rule)" />`);
+    }
+    cd.setMonth(cd.getMonth() + 1);
+    if (cd.getFullYear() > YEAR + 1) break;
+  }
+
+  // Bottom axis line
+  parts.push(`<line x1="${chartL}" y1="${padTop+innerH}" x2="${chartR}" y2="${padTop+innerH}" stroke="var(--rule)" />`);
+
+  // Rows
+  if (hybrids.length === 0) {
+    parts.push(
+      `<text x="${chartL + chartW/2}" y="${padTop + innerH/2}" text-anchor="middle" fill="var(--ink-soft)" font-size="13">No hybrids selected — pick at least one above.</text>`
+    );
+  }
+
+  hybrids.forEach((h, i) => {
+    const y = padTop + i * rowH;
+    const cy = y + rowH / 2;
+    const barH = Math.min(10, rowH - 10);
+    parts.push(`<rect class="row-bg" x="${padL}" y="${y}" width="${W-padL-padR}" height="${rowH}" fill="${i%2===0?'transparent':'var(--bg-card-2)'}" />`);
+
+    // Row label — adaptive: single line when very tight, two lines otherwise
+    if (compactLabel) {
+      parts.push(
+        `<text class="row-label" x="${padL+labelW-12}" y="${cy+3}" text-anchor="end">${h.name} <tspan class="row-rm">${h.rm}RM</tspan></text>`
+      );
+    } else {
+      parts.push(
+        `<text class="row-label" x="${padL+labelW-12}" y="${cy-2}" text-anchor="end">${h.name}</text>`,
+        `<text class="row-rm"   x="${padL+labelW-12}" y="${cy+11}" text-anchor="end">${h.rm}RM · ${h.gdu_bl} GDU</text>`
+      );
+    }
+
+    // Bars: Plant -> Emerge -> Silk -> BL -> Harvest
+    const xPlant = xOfDoy(plantDoy);
+
+    if (state.showEmerge && h.emergeDoy) {
+      const x1 = xPlant;
+      const x2 = xOfDoy(h.emergeDoy);
+      parts.push(`<rect class="bar-emerge" x="${x1}" y="${cy - barH/2}" width="${Math.max(1, x2-x1)}" height="${barH}" rx="1.5" />`);
+    }
+    if (state.showSilk && h.silkDoy) {
+      // Silk segment starts at emergence if emergence is being shown (and computed); otherwise from plant
+      const x1 = (state.showEmerge && h.emergeDoy) ? xOfDoy(h.emergeDoy) : xPlant;
+      const x2 = xOfDoy(h.silkDoy);
+      parts.push(`<rect class="bar-silk" x="${x1}" y="${cy - barH/2}" width="${Math.max(1, x2-x1)}" height="${barH}" rx="1.5" />`);
+    }
+    if (state.showBl && h.silkDoy && h.blDoy) {
+      const x1 = xOfDoy(h.silkDoy);
+      const x2 = xOfDoy(h.blDoy);
+      parts.push(`<rect class="bar-bl" x="${x1}" y="${cy - barH/2}" width="${Math.max(1, x2-x1)}" height="${barH}" rx="1.5" />`);
+    }
+    if (state.showHarvest && h.blDoy && h.harvestDoy) {
+      const x1 = xOfDoy(h.blDoy);
+      const x2 = xOfDoy(h.harvestDoy);
+      parts.push(`<rect class="bar-harvest" x="${x1}" y="${cy - barH/2}" width="${Math.max(1, x2-x1)}" height="${barH}" rx="1.5" />`);
+    }
+
+    // End-of-bar markers
+    if (state.showEmerge && h.emergeDoy) {
+      parts.push(`<circle class="marker" cx="${xOfDoy(h.emergeDoy)}" cy="${cy}" r="2.8" fill="var(--emerge)" />`);
+    }
+    if (state.showSilk && h.silkDoy) {
+      parts.push(`<circle class="marker" cx="${xOfDoy(h.silkDoy)}" cy="${cy}" r="3.2" fill="var(--silk)" />`);
+    }
+    if (state.showBl && h.blDoy) {
+      parts.push(`<circle class="marker" cx="${xOfDoy(h.blDoy)}" cy="${cy}" r="3.2" fill="var(--bl)" />`);
+    }
+    if (state.showHarvest && h.harvestDoy) {
+      parts.push(`<circle class="marker" cx="${xOfDoy(h.harvestDoy)}" cy="${cy}" r="3.6" fill="var(--harvest)" />`);
+      // text harvest date right of marker if room
+      const x = xOfDoy(h.harvestDoy);
+      if (x < chartR - 56) {
+        parts.push(
+          `<text class="row-rm" x="${x+7}" y="${cy+3}" fill="var(--harvest)">${fmtDate(h.harvestDate)}</text>`
+        );
+      }
+    } else if (state.showBl && h.blDoy && !h.harvestDoy) {
+      const x = xOfDoy(h.blDoy);
+      parts.push(`<text class="row-rm" x="${x+7}" y="${cy+3}" fill="var(--bl)">BL ${fmtDate(h.blDate)}</text>`);
+    } else if (!h.silkDoy && !h.blDoy && !h.harvestDoy) {
+      parts.push(`<text class="row-rm" x="${xPlant+8}" y="${cy+3}" fill="var(--ink-faint)">Insufficient GDU before season end</text>`);
+    }
+  });
+
+  svg.innerHTML = parts.join("\n");
+}
+
+/* ========================================================================
+   Render: Detail table
+   ======================================================================== */
+function colorForDate(doy, minDoy, maxDoy) {
+  if (!doy) return null;
+  const t = Math.max(0, Math.min(1, (doy - minDoy) / Math.max(1, (maxDoy - minDoy))));
+  // Light → dark blue gradient (earliest = light, latest = dark)
+  // Light:  #e8f1f8  Dark: #1f4e7a
+  const c1 = [232, 241, 248], c2 = [31, 78, 122];
+  const r = Math.round(c1[0] + (c2[0]-c1[0]) * t);
+  const g = Math.round(c1[1] + (c2[1]-c1[1]) * t);
+  const b = Math.round(c1[2] + (c2[2]-c1[2]) * t);
+  // text color: white if dark enough, else dark ink
+  const lum = (0.299*r + 0.587*g + 0.114*b) / 255;
+  return { bg: `rgb(${r},${g},${b})`, fg: lum < 0.6 ? "white" : "#1f1d18" };
+}
+
+function renderDetail() {
+  const tbody = document.querySelector("#detail-table tbody");
+  const meta = document.getElementById("detail-meta");
+  const ms = computeMilestones(state.location, state.plantDate)
+                .filter(h => state.selectedHybrids.has(h.name));
+
+  // sort
+  const { col, dir } = state.detailSort;
+  const sign = dir === "asc" ? 1 : -1;
+  ms.sort((a, b) => {
+    const get = (h) => {
+      switch(col) {
+        case "hybrid": return h.name;
+        case "rm": return h.rm;
+        case "gdu_silk": return h.gdu_silk;
+        case "gdu_bl": return h.gdu_bl;
+        case "emerge_date": return h.emergeDoy || 9999;
+        case "silk_date": return h.silkDoy || 9999;
+        case "bl_date": return h.blDoy || 9999;
+        case "harvest_date": return h.harvestDoy || 9999;
+        case "days_to_harvest":
+          return h.harvestDoy ? (h.harvestDoy - h.plantDoy) : 9999;
+        default: return 0;
+      }
+    };
+    const av = get(a), bv = get(b);
+    if (typeof av === "string") return av.localeCompare(bv) * sign;
+    return (av - bv) * sign;
+  });
+
+  // ranges for color gradient
+  const silkDoys = ms.map(h => h.silkDoy).filter(Boolean);
+  const blDoys = ms.map(h => h.blDoy).filter(Boolean);
+  const hDoys = ms.map(h => h.harvestDoy).filter(Boolean);
+  const silkMin = Math.min(...silkDoys, 999), silkMax = Math.max(...silkDoys, 0);
+  const blMin = Math.min(...blDoys, 999), blMax = Math.max(...blDoys, 0);
+  const hMin = Math.min(...hDoys, 999), hMax = Math.max(...hDoys, 0);
+
+  tbody.innerHTML = ms.map(h => {
+    const sc = colorForDate(h.silkDoy, silkMin, silkMax);
+    const bc = colorForDate(h.blDoy, blMin, blMax);
+    const hc = colorForDate(h.harvestDoy, hMin, hMax);
+    const days = h.harvestDoy ? (h.harvestDoy - h.plantDoy) : null;
+    const styleCell = (c) => c ? `style="background:${c.bg};color:${c.fg};"` : "";
+    return `<tr>
+      <td class="name">${h.name}</td>
+      <td>${h.rm}</td>
+      <td>${h.gdu_silk}</td>
+      <td>${h.gdu_bl}</td>
+      <td>${h.emergeDate ? fmtDateLong(h.emergeDate) : "—"}</td>
+      <td class="silk-cell" ${styleCell(sc)}>${h.silkDate ? fmtDateLong(h.silkDate) : "—"}</td>
+      <td class="bl-cell" ${styleCell(bc)}>${h.blDate ? fmtDateLong(h.blDate) : "—"}</td>
+      <td class="harvest-cell" ${styleCell(hc)}>${h.harvestDate ? fmtDateLong(h.harvestDate) : "—"}</td>
+      <td>${days != null ? days : "—"}</td>
+    </tr>`;
+  }).join("");
+
+  meta.textContent = `${state.location}, MN · planted ${fmtDateLong(dateFromIso(state.plantDate))} · ${ms.length} hybrid${ms.length===1?"":"s"}`;
+}
+
+/* ========================================================================
+   Render: Calendar
+   ======================================================================== */
+function renderCalendar() {
+  const tbody = document.querySelector("#cal-table tbody");
+  const meta = document.getElementById("cal-meta");
+  const series = state.series[state.location] || [];
+  const plantDate = dateFromIso(state.plantDate);
+  const plantDoy = doyFromDate(plantDate);
+  const ms = computeMilestones(state.location, state.plantDate)
+                .filter(h => state.selectedHybrids.has(h.name));
+
+  // Map doy -> [milestone strings]
+  const milestoneMap = {};
+  // Emergence is the same date for every hybrid → record it once
+  if (ms.length > 0 && ms[0].emergeDoy) {
+    (milestoneMap[ms[0].emergeDoy] = milestoneMap[ms[0].emergeDoy] || []).push("Emergence (VE)");
+  }
+  for (const h of ms) {
+    if (h.silkDoy) (milestoneMap[h.silkDoy] = milestoneMap[h.silkDoy] || []).push(`${h.name} silk`);
+    if (h.blDoy) (milestoneMap[h.blDoy] = milestoneMap[h.blDoy] || []).push(`${h.name} BL`);
+    if (h.harvestDoy) (milestoneMap[h.harvestDoy] = milestoneMap[h.harvestDoy] || []).push(`${h.name} harvest 21%`);
+  }
+
+  // April 1 → Nov 20
+  const startDoy = doyFromDate(new Date(YEAR, 3, 1));
+  const endDoy = doyFromDate(new Date(YEAR, 10, 20));
+
+  let cumYear = 0;
+  for (let i = 0; i < startDoy - 1; i++) cumYear += (series[i] && series[i].gdu) || 0;
+
+  let cumPlant = 0;
+  const rows = [];
+  for (let doy = startDoy; doy <= endDoy; doy++) {
+    const day = series[doy - 1] || { gdu: 0, src: "avg" };
+    cumYear += day.gdu;
+    if (doy >= plantDoy) cumPlant += day.gdu;
+    const date = dateFromDoy(YEAR, doy);
+    const srcPill = `<span class="src-pill src-${day.src === "actual" ? "actual" : day.src === "forecast" ? "forecast" : "avg"}">${day.src === "actual" ? "actual" : day.src === "forecast" ? "forecast" : "2020–25 avg"}</span>`;
+    const milestones = milestoneMap[doy];
+    rows.push(`<tr class="${milestones?'milestone':''}">
+      <td class="label">${fmtDateLong(date)}</td>
+      <td>${doy}</td>
+      <td>${day.gdu.toFixed(1)}</td>
+      <td>${srcPill}</td>
+      <td>${doy >= plantDoy ? cumPlant.toFixed(0) : "—"}</td>
+      <td>${cumYear.toFixed(0)}</td>
+      <td>${milestones ? milestones.join(" · ") : ""}</td>
+    </tr>`);
+  }
+  tbody.innerHTML = rows.join("");
+  meta.textContent = `${state.location}, MN · planting ${fmtDateLong(plantDate)}`;
+}
+
+/* ========================================================================
+   Excel export
+   ======================================================================== */
+function exportToExcel() {
+  if (typeof XLSX === "undefined") {
+    alert("Excel library not loaded — please reload the page.");
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Hybrid Detail
+  const ms = computeMilestones(state.location, state.plantDate)
+                .filter(h => state.selectedHybrids.has(h.name));
+  const detailRows = [
+    ["Hybrid", "RM", "GDU to Silk", "GDU to BL", "Emergence", "Silk Date", "BL Date", "Harvest 21%", "Days from Planting to Harvest"],
+    ...ms.map(h => [
+      h.name, h.rm, h.gdu_silk, h.gdu_bl,
+      h.emergeDate ? fmtDateLong(h.emergeDate) : "",
+      h.silkDate ? fmtDateLong(h.silkDate) : "",
+      h.blDate ? fmtDateLong(h.blDate) : "",
+      h.harvestDate ? fmtDateLong(h.harvestDate) : "",
+      h.harvestDoy ? h.harvestDoy - h.plantDoy : "",
+    ]),
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(detailRows);
+  ws1["!cols"] = [{wch:10},{wch:5},{wch:12},{wch:12},{wch:18},{wch:18},{wch:18},{wch:18},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws1, "Hybrid Detail");
+
+  // Sheet 2: GDU Calendar
+  const series = state.series[state.location] || [];
+  const plantDoy = doyFromDate(dateFromIso(state.plantDate));
+  const startDoy = doyFromDate(new Date(YEAR, 3, 1));
+  const endDoy = doyFromDate(new Date(YEAR, 10, 20));
+
+  // map milestones
+  const milestoneMap = {};
+  if (ms.length > 0 && ms[0].emergeDoy) {
+    (milestoneMap[ms[0].emergeDoy] = milestoneMap[ms[0].emergeDoy] || []).push("Emergence (VE)");
+  }
+  for (const h of ms) {
+    if (h.silkDoy) (milestoneMap[h.silkDoy] = milestoneMap[h.silkDoy] || []).push(`${h.name} silk`);
+    if (h.blDoy) (milestoneMap[h.blDoy] = milestoneMap[h.blDoy] || []).push(`${h.name} BL`);
+    if (h.harvestDoy) (milestoneMap[h.harvestDoy] = milestoneMap[h.harvestDoy] || []).push(`${h.name} harvest`);
+  }
+
+  let cumYear = 0;
+  for (let i = 0; i < startDoy - 1; i++) cumYear += (series[i] && series[i].gdu) || 0;
+  let cumPlant = 0;
+  const calRows = [
+    ["Date", "DOY", "Daily GDU", "Source", "Cum from Planting", "Cum from Jan 1", "Milestones"],
+  ];
+  for (let doy = startDoy; doy <= endDoy; doy++) {
+    const day = series[doy - 1] || { gdu: 0, src: "avg" };
+    cumYear += day.gdu;
+    if (doy >= plantDoy) cumPlant += day.gdu;
+    const date = dateFromDoy(YEAR, doy);
+    const srcLabel = day.src === "actual" ? "actual" : day.src === "forecast" ? "forecast" : "2020–25 avg";
+    calRows.push([
+      fmtDateLong(date), doy, +day.gdu.toFixed(1), srcLabel,
+      doy >= plantDoy ? +cumPlant.toFixed(0) : "",
+      +cumYear.toFixed(0),
+      milestoneMap[doy] ? milestoneMap[doy].join(" · ") : "",
+    ]);
+  }
+  const ws2 = XLSX.utils.aoa_to_sheet(calRows);
+  ws2["!cols"] = [{wch:18},{wch:5},{wch:11},{wch:14},{wch:18},{wch:16},{wch:40}];
+  XLSX.utils.book_append_sheet(wb, ws2, "GDU Calendar");
+
+  // Sheet 3: Inputs / metadata
+  const meta = [
+    ["Pioneer Hybrid Growth Chart — SW Minnesota"],
+    ["Generated", new Date().toString()],
+    [],
+    ["Location", state.location + ", MN"],
+    ["Planting Date", fmtDateLong(dateFromIso(state.plantDate))],
+    ["GDU Formula", "Base 50°F / Ceiling 86°F"],
+    ["Harvest Threshold", "Black Layer + 217.5 GDU = ~21% moisture"],
+    [],
+    ["Data Sources"],
+    ["  Historical baseline", "MRCC station daily GDU, 2020–2025 average"],
+    ["  2026 actuals", "RCC-ACIS (data.rcc-acis.org)"],
+    ["  10-day forecast", "Open-Meteo (api.open-meteo.com)"],
+    [],
+    ["Actuals through DOY", state.actualEndDoy || "—"],
+    ["Forecast through DOY", state.forecastEndDoy || "—"],
+  ];
+  const ws3 = XLSX.utils.aoa_to_sheet(meta);
+  ws3["!cols"] = [{wch:24},{wch:48}];
+  XLSX.utils.book_append_sheet(wb, ws3, "Inputs");
+
+  const fname = `pioneer_hybrid_chart_${state.location.replace(/\s+/g,"_")}_${state.plantDate}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+/* ========================================================================
+   Master render
+   ======================================================================== */
+function render() {
+  renderChart();
+  renderDetail();
+  renderCalendar();
+}
+
+/* ========================================================================
+   Init
+   ======================================================================== */
+function init() {
+  buildLocationSelect();
+  buildPlantingSelect();
+  buildHybridMultiselect();
+  bindToggles();
+  setStatus("loading", "Using 2020–25 historical baseline");
+  render();
+  // Fetch live data in the background and re-render silently.
+  refreshLiveData().catch(err => {
+    console.warn("Live data fetch error:", err);
+    setStatus("offline", "Live fetch failed — showing 2020–25 average");
+  });
+}
+
+window.addEventListener("DOMContentLoaded", init);
+window.addEventListener("resize", () => { renderChart(); });
+</script>
+</body>
+</html>
